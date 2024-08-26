@@ -4,6 +4,48 @@ const { validationResult } = require("express-validator");
 const Usuario = require("../models/usuario");
 const { generrarJWT } = require("../helpers/jwt");
 
+class User {
+    static crearUsuario = async(req, res = response) => {
+    
+        const {correo, password} = req.body;
+    
+        try{
+            const existeEmail = await Usuario.findOne({correo});
+            if(existeEmail){
+                return res.status(400).json({
+                    ok: false,
+                    msg: 'El correo ya esta registrado'
+                });
+            }
+    
+            const usuario = new Usuario(req.body);
+    
+            //encriptar contraseña
+            const salt = bcrypt.genSaltSync();
+            usuario.password = bcrypt.hashSync(password,salt);
+    
+            //se graba en la base de datos
+            await usuario.save();
+    
+            //Generar mi JWT(JASON WEB TOKEN)
+            const token = await generrarJWT(usuario.id);
+       
+            res.json({
+                ok : true,
+                usuario,
+                token
+            });
+    
+        }catch (error){
+            console.log(error);
+            res.status(500).json({
+                ok: false,
+                msg: 'Hable con el administrador'
+            });
+    
+        }    
+    }
+}
 const crearUsuario = async(req, res = response) => {
     
     const {correo, password} = req.body;
@@ -110,10 +152,10 @@ const renewToken = async(req, res = response) => {
 
 }
 
-
 module.exports = {
     crearUsuario,
     login,
-    renewToken
+    renewToken,
+    User
 }
     
